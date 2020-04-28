@@ -1,0 +1,389 @@
+apply plugin: 'com.android.application'
+
+//==================== 依赖 ====================
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'com.meituan.android.walle:library:1.1.6'
+}
+
+//==================== 配置 ====================
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.3"
+
+    defaultConfig {
+        applicationId "com.georgebindragon.pinsprojectdemo"
+        minSdkVersion 19
+        targetSdkVersion 29
+
+        versionCode 10001
+        versionName "v1.0.1" // 1 00 01
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters 'armeabi'//设置支持的so库架构
+            //全部：'armeabi', 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'    //主要的：armeabi-v7a(2010年起)、arm64-v8a(从2014年起)
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    signingConfigs { release {}/* 采用这个标签进行配置（只是借用这个参数, 在后面的 getSignInfo 内,对其今行赋值）*/ }
+
+    buildTypes {
+
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+
+            //小技巧：通过gradle添加各种值
+            applicationIdSuffix ".debug" //给debug一个包名延长，这样可以同时安装 正式版和调试版
+            versionNameSuffix '_debug'   //给debug一个versionName延长
+
+            manifestPlaceholders = [
+                    holder_key: "holder_value_debug",//AndroidManifest.xml文件占位符
+            ]
+
+            resValue "string", "app_version_resValue", "测试版" //动态向res中添加参数
+        }
+
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            manifestPlaceholders = [
+                    holder_key: "holder_value_release",
+            ]
+
+            signingConfig getSignInfo(signingConfigs.release, "/Users/Develop/Android/Configs/Keys/GeorgeBinDragon/sign_p12.properties",
+                    "/Users/Develop/Android/Configs/Keys/GeorgeBinDragon/george.p12")
+        }
+    }
+
+
+    //一、异化维度：设备，公司定制，应用类型
+    flavorDimensions "device", "company", "type"
+    // 覆盖优先级从左到右，依次降低
+
+    //二、具体的异化
+    productFlavors {
+
+        //==================== 类型 ====================
+
+        NormalApp__ { dimension "type" } //普通App
+        Launcher__ { dimension "type" }  //Launcher
+
+        //==================== 公司 ====================
+
+        CompanyTest__ { dimension "company" } // 用于定制测试
+        CompanyA__ { dimension "company" }    // 厂商A
+        CompanyB__ { dimension "company" }    // 厂商B
+
+        //==================== 设备 ====================
+
+        Android__ { dimension "device" }  // 普通手机
+        Chair__ { dimension "device" }    // 椅子上触摸屏
+
+        // 特殊手持终端
+        Special__ {
+            applicationId "com.other.xxxx" // 特殊手持终端上只能安装特定包名的App
+            dimension "device"
+        }
+
+        //备注：这个命名后面加两条“__”，是为了在工程的task列表内显示时，可以断句
+    }
+
+
+    //三、资源集合
+
+    //1. p_module 使用资源目录列表（每增加一个，记得更新）
+    def pinsDirs = ['p_module_a_common', 'p_module_f_company', 'p_module_f_device']
+
+    //2. 根据p_module 和 异化，指定资源目录
+    sourceSets {
+
+        // 可指定内容：
+        // manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+        // jniLibs.srcDirs "src/assemble/${dirname}/jniLibs"
+        // res.srcDir "src/assemble/${dirname}/res"
+        // assets.srcDirs "src/assemble/${dirname}/assets"
+        // java.srcDir "src/p_module/${dir}/${dirname}/java"
+
+        //==================== Main ====================
+
+        // 指定共用部分目录
+        main {
+
+            //==================== 资源（assemble） ====================
+
+            // 基础 必备通用资源
+            def dirBase = 'a_base'
+
+            res.srcDir "src/assemble/${dirBase}/res"
+            assets.srcDirs "src/assemble/${dirBase}/assets"
+            jniLibs.srcDirs "src/assemble/${dirBase}/jniLibs"
+
+            // 资源文件
+            def dirBaseResource = 'a_base_resource'
+            res.srcDir "src/assemble/${dirBaseResource}/res"
+
+            // 国际化资源
+            def languageName = 'a_language'
+            res.srcDir "src/assemble/${languageName}/res"
+
+            //==================== 定制 ====================
+
+            //  def dirCustomMust = 'a_custom_must' //定制 - 必须提供的部分
+            //  res.srcDir "src/assemble/${dirCustomMust}/res" //屏蔽掉是因为如果不放入这个资源，编译过程会主动报错
+
+            def dirCustomCommon = 'a_custom_common' //定制 - 非严格定制时，可通用的部分
+            res.srcDir "src/assemble/${dirCustomCommon}/res"
+
+            def dirCustomAdvanced = 'a_custom_advanced' //定制 - 高级定制（样式，颜色等）
+            res.srcDir "src/assemble/${dirCustomAdvanced}/res"
+
+            def dirCustom = 'a_custom_config' //定制 - 配置信息
+            res.srcDir "src/assemble/${dirCustom}/res"
+
+            //==================== 调试 ====================
+
+            //debug配置
+            def debugName = 'a_debug'
+            debug {
+                res.srcDir "src/assemble/${debugName}/res"//debug资源
+                manifest.srcFile "src/assemble/${debugName}/AndroidManifest.xml"
+
+                pinsDirs.each { dir ->
+                    java.srcDir("src/p_module/${dir}/${debugName}/java")
+                }
+            }
+
+
+            //==================== 代码（p_module） ====================
+
+            //通用 工程 配置
+            def codeName = 'a_common'
+
+            pinsDirs.each { dir ->
+                java.srcDir("src/p_module/${dir}/${codeName}/java")
+            }
+
+        }
+
+        //==================== 类型 ====================
+
+        NormalApp__ {
+            def dirname = 'b_app'
+            res.srcDir "src/assemble/${dirname}/res"
+        }
+
+        Launcher__ {
+            def dirname = 'b_launcher'
+            res.srcDir "src/assemble/${dirname}/res"
+            manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+        }
+
+        //==================== 公司 ====================
+
+        //定制测试
+        CompanyTest__ {
+
+            def dirname = 'c_company_test'
+
+            manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+            jniLibs.srcDirs "src/assemble/${dirname}/jniLibs"
+            res.srcDir "src/assemble/${dirname}/res"
+            assets.srcDirs "src/assemble/${dirname}/assets"
+
+            pinsDirs.each { dir ->
+                jniLibs.srcDirs "src/p_module/${dir}/${dirname}/jniLibs"
+                assets.srcDirs "src/p_module/${dir}/${dirname}/assets"
+                java.srcDir("src/p_module/${dir}/${dirname}/java")
+                res.srcDir("src/p_module/${dir}/${dirname}/res")
+            }
+        }
+
+        // 厂商A
+        CompanyA__ {
+
+            def dirname = 'c_company_a'
+
+            res.srcDir "src/assemble/${dirname}/res"
+        }
+
+        // 厂商B
+        CompanyB__ {
+
+            def dirname = 'c_company_b'
+
+            manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+            jniLibs.srcDirs "src/assemble/${dirname}/jniLibs"
+            res.srcDir "src/assemble/${dirname}/res"
+            assets.srcDirs "src/assemble/${dirname}/assets"
+
+            pinsDirs.each { dir ->
+                jniLibs.srcDirs "src/p_module/${dir}/${dirname}/jniLibs"
+                assets.srcDirs "src/p_module/${dir}/${dirname}/assets"
+                java.srcDir("src/p_module/${dir}/${dirname}/java")
+                res.srcDir("src/p_module/${dir}/${dirname}/res")
+            }
+        }
+
+        //==================== 设备 ====================
+
+        // 普通手机
+        Android__ {
+
+            def dirname = 'd_android'
+
+            manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+            jniLibs.srcDirs "src/assemble/${dirname}/jniLibs"
+            res.srcDir "src/assemble/${dirname}/res"
+            assets.srcDirs "src/assemble/${dirname}/assets"
+
+            pinsDirs.each { dir ->
+                jniLibs.srcDirs "src/p_module/${dir}/${dirname}/jniLibs"
+                assets.srcDirs "src/p_module/${dir}/${dirname}/assets"
+                java.srcDir("src/p_module/${dir}/${dirname}/java")
+                res.srcDir("src/p_module/${dir}/${dirname}/res")
+            }
+        }
+
+        // 椅子上触摸屏
+        Chair__ {
+
+            def dirname = 'd_chair'
+
+            manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+            res.srcDir "src/assemble/${dirname}/res"
+
+            pinsDirs.each { dir ->
+                java.srcDir("src/p_module/${dir}/${dirname}/java")
+                res.srcDir("src/p_module/${dir}/${dirname}/res")
+            }
+        }
+
+        // 特殊手持终端
+        Special__ {
+
+            def dirname = 'd_special'
+
+            manifest.srcFile "src/assemble/${dirname}/AndroidManifest.xml"
+            res.srcDir "src/assemble/${dirname}/res"
+
+            pinsDirs.each { dir ->
+                java.srcDir("src/p_module/${dir}/${dirname}/java")
+                res.srcDir("src/p_module/${dir}/${dirname}/res")
+            }
+        }
+
+        //==================== 其他 ====================
+
+    }
+
+
+    //排除特定版本，为了方便编译，去除不需要的组合
+
+    // 设备：
+    def d_安卓 = 'Android__'; def d_椅子 = 'Chair__'; def d_特殊 = 'Special__'
+    // 公司
+    def c_测试 = 'CompanyTest__'; def c_A厂商 = 'CompanyA__'; def c_B厂商 = 'CompanyB__'
+    // type：
+    def b_应用 = 'NormalApp__'; def b_桌面 = 'Launcher__'
+
+    //↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+    variantFilter { variant ->
+        def names = variant.flavors*.name
+
+        setIgnore(true)//全部忽略
+
+
+        //测试
+        persistThisFlavor(variant, names, d_安卓, c_测试, b_桌面)
+        persistThisFlavor(variant, names, d_安卓, c_测试, b_应用)
+
+        //解除要保留的flavors
+        persistThisFlavor(variant, names, d_安卓, c_测试, b_应用)
+        persistThisFlavor(variant, names, d_安卓, c_A厂商, b_应用)
+        persistThisFlavor(variant, names, d_安卓, c_B厂商, b_应用)
+
+        persistThisFlavor(variant, names, d_椅子, c_A厂商, b_应用)
+        persistThisFlavor(variant, names, d_特殊, c_B厂商, b_桌面)
+
+        //        if (variant.buildType.name.contains("debug")) {
+        //            if (names.contains(c_B厂商) || names.contains(c_A厂商))
+        //            {
+        //                setIgnore(true) //忽略掉解除的flavors的 debug 版本
+        //            }
+        //        }
+
+        if (variant.buildType.name.contains("release")) {
+            if (names.contains(c_测试)) {
+                setIgnore(true) //忽略掉解除的flavors的 release 版本
+            }
+        }
+    }
+}
+
+
+//==================== 插件 ====================
+
+apply plugin: 'walle' // 多渠道打包：美团方案：https://github.com/Meituan-Dianping/walle
+walle {
+    // 指定渠道包的输出路径
+    apkOutputFolder = new File("/Users/george/Desktop/Demo/apk")//放置位置
+
+    // 定制渠道包的APK的文件名称
+    apkFileNameFormat = 'Pins演示Demo-${versionName}-${buildTime}-${flavorName}-${channel}-${buildType}.apk'
+    // 渠道配置文件
+    channelFile = new File("${project.getProjectDir()}/configFile/channel.txt")
+}
+
+//==================== 自定义方法 ====================
+
+// 排除特定版本，为了方便编译，去除不需要的组合
+def persistThisFlavor(variant, names, type1, type2, type3) {
+
+    if (((null == type1) || names.contains(type1)) && ((null == type2) || names.contains(type2)) && ((null == type3) || names.contains(type3))) {
+        variant.setIgnore(false)
+        println "保留此Flavor：type1=" + (null == type1 ? "NULL" : type1) + "type2=" + (null == type2 ? "NULL" : type2) + "type3=" + (null == type3 ? "NULL" : type3)
+    }
+
+}
+
+// 生成签名配置：传入配置文件、签名文件
+def getSignInfo(signingConfig, propFilePath, keystore) {
+
+    File propFile = file(propFilePath)
+    if (propFile.exists()) {
+        Properties props = new Properties()
+        props.load(new FileInputStream(propFile))
+
+        signingConfig.storeFile = file(keystore)
+
+        signingConfig.storePassword = props['STORE_PASSWORD']
+        signingConfig.keyAlias = props['KEY_ALIAS']
+        signingConfig.keyPassword = props['KEY_PASSWORD']
+        signingConfig.v1SigningEnabled = true //v1签名=允许
+        signingConfig.v2SigningEnabled = true //v2签名=允许
+        println('method:getSignInfo(), signConfig is exits,path=' + propFilePath)
+
+    } else {
+        println('sign config is null')
+        signingConfig = null
+    }
+    return signingConfig
+}
