@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<manifest package="com.georgebindragon.pinsprojectdemo"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!-- 展示AndroidManifest.xml文件占位符：holder_key -->
+        <!-- 第三方SDK的各种key -->
+        <meta-data
+            android:name="com.georgebindragon.meta-data.key_holder"
+            android:value="${holder_key}" />
+
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+
+                <category android:name="android.intent.category.MONKEY" />
+            </intent-filter>
+
+            <meta-data
+                android:name="com.georgebindragon.meta-data.key_activity"
+                android:value="activity内" />
+        </activity>
+
+
+        <service android:name=".MyService">
+
+            <meta-data
+                android:name="com.georgebindragon.meta-data.key_service"
+                android:value="service内" />
+        </service>
+
+        <receiver android:name=".MyReceiver">
+
+            <meta-data
+                android:name="com.georgebindragon.meta-data.key_receiver"
+                android:value="receiver内" />
+        </receiver>
+    </application>
+
+</manifest>
